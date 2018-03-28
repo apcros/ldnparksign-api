@@ -13,13 +13,25 @@ class ParkingSignParser:
     def image_to_string(self):
         image = cv2.imread(self.filename)
         gray_scale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray_scale_image = cv2.threshold(gray_scale_image, 150, 255, cv2.THRESH_OTSU)[1]
+        gray_scale_image = self._crop_picture(gray_scale_image)
+        gray_scale_image = cv2.threshold(gray_scale_image, 200, 255, cv2.THRESH_TOZERO | cv2.THRESH_BINARY)[1]
+        gray_scale_image = cv2.medianBlur(gray_scale_image, 3)
+        print(len(gray_scale_image[0]))
         #temp_file = tempfile.TemporaryFile()
         temp_file_name = '/tmp/test.png';
         cv2.imwrite(temp_file_name, gray_scale_image)
 
         text = pytesseract.image_to_string(Image.open(temp_file_name))
+        print(text)
         #temp_file.close()
         #os.remove(temp_file_name)
 
         return text
+
+    @staticmethod
+    def _crop_picture(image):
+         width = len(image[0])
+         height = len(image[1])
+         #TODO : Detect the parking sign area and crop it
+         return image[200:450, 325:600]
+
