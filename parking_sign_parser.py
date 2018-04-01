@@ -26,6 +26,8 @@ class ParkingSignParser:
         #temp_file.close()
         #os.remove(temp_file_name)
 
+        parsed_data = self._parse_string(text)
+        print(parsed_data)
         return text
 
     @staticmethod
@@ -35,3 +37,8 @@ class ParkingSignParser:
          #TODO : Detect the parking sign area and crop it
          return image[200:450, 325:600]
 
+    @staticmethod
+    def _parse_string(image_string):
+        parking_infos = {}
+        
+        return parking_infos
