@@ -2,3 +2,5 @@ Flask
 opencv-python
 pytesseract
 pillow
+numpy
+imutils

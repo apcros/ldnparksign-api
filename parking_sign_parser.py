@@ -4,26 +4,44 @@ import cv2
 import calendar
 import tempfile
 import os
-
+import numpy
+import imutils
 
 class ParkingSignParser:
 
     def __init__(self, filename):
         self.filename = filename
+        self.LOWER_GRAY_BOUND = 125
+        self.MIN_NUM_OF_PIX_IN_MASK = 35
+
+    def save_temp_image(self, image, name='def'):
+        base_path = '/Users/apcros/Desktop/sign/'
+        base_filename = self.filename.split('/')[-1]
+
+        temp_filename = '{}{}-{}'.format(base_path, name, base_filename)
+        cv2.imwrite(
+            temp_filename,
+            image
+        )
+
+        return temp_filename
 
     def image_to_string(self):
         image = cv2.imread(self.filename)
         gray_scale_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        gray_scale_image = self._crop_picture(gray_scale_image)
-        gray_scale_image = cv2.threshold(gray_scale_image, 200, 255, cv2.THRESH_TOZERO | cv2.THRESH_BINARY)[1]
-        gray_scale_image = cv2.medianBlur(gray_scale_image, 3)
-        print(len(gray_scale_image[0]))
-        #temp_file = tempfile.TemporaryFile()
-        temp_file_name = '/tmp/test.png';
-        cv2.imwrite(temp_file_name, gray_scale_image)
+
+        self.save_temp_image(gray_scale_image, 'gray')
+        gray_scale_image = self.detect_sign_and_crop_picture(gray_scale_image)
+        self.save_temp_image(gray_scale_image, 'croped')
+        gray_scale_image = cv2.threshold(gray_scale_image, self.LOWER_GRAY_BOUND, 255, cv2.THRESH_TOZERO | cv2.THRESH_BINARY)[1]
+        #gray_scale_image = cv2.medianBlur(gray_scale_image, 1)
+        
+        temp_file_name = self.save_temp_image(gray_scale_image, 'pre-ocr')
 
         text = pytesseract.image_to_string(Image.open(temp_file_name))
+        print("====== IMAGE TO STRING ====")
         print(text)
+        print("===== IMAGE/ ======")
         #temp_file.close()
         #os.remove(temp_file_name)
 
@@ -32,13 +50,49 @@ class ParkingSignParser:
         print(parsed_data)
         return text
 
-    @staticmethod
-    def _crop_picture(image):
-         width = len(image[0])
-         height = len(image[1])
-         #TODO : Detect the parking sign area and crop it
-         return image[200:450, 325:600]
+    def detect_sign_and_crop_picture(self, image):
+        width = len(image[0])
+        height = len(image[1])
 
+        lower = numpy.array([self.LOWER_GRAY_BOUND])
+        upper = numpy.array([255])
+        shapeMask = cv2.inRange(image, lower, upper)
+        self.save_temp_image(shapeMask, 'sign-mask')
+        print(shapeMask)
+
+        cnts = cv2.findContours(shapeMask.copy(), cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_SIMPLE)
+        cnts = imutils.grab_contours(cnts)
+        # loop over the contours
+        xs = []
+        ys = []
+
+        for c in cnts:
+            # draw the contour and show it
+            if len(c) > self.MIN_NUM_OF_PIX_IN_MASK:
+                print("FOUND ONE ({})".format(len(c)))
+                sorted_c = sorted(c, key=lambda x: (x[0][0], x[0][1]) )
+                first_elem = sorted_c[0][0]
+                last_elem = sorted_c[-1][0]
+
+                xs.append(first_elem[0])
+                xs.append(last_elem[0])
+
+                ys.append(first_elem[1])
+                ys.append(last_elem[1])
+
+        
+        min_x = min(xs)
+        max_x = max(xs)
+        min_y = min(ys)
+        max_y = max(ys)
+        print("{}:{} {}:{}".format(min_x, max_x, min_y, max_y))
+        return image[min_x:max_x, min_y:max_y]
+
+
+    @staticmethod
+    def parse_image_string():
+        pass
     # Because OCR parsing is, by definition, really flaky we need
     # to include a maximum of safe guards in this parsing method
     @staticmethod
